@@ -28,7 +28,8 @@ PUBSPEC = ROOT / "pubspec.yaml"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
-VERSION_LINE = re.compile(r"^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$", re.MULTILINE)
+# [ \t] instead of \s: \s also matches newlines and would eat the next blank line.
+VERSION_LINE = re.compile(r"^version:[ \t]*(\d+\.\d+\.\d+)\+(\d+)[ \t]*$", re.MULTILINE)
 SECTION = re.compile(r"^## \[([^\]]+)\].*$", re.MULTILINE)
 COMMIT = re.compile(r"^(\w+)(\([^)]*\))?(!)?: (.+)$")
 
@@ -137,10 +138,11 @@ def cmd_prepare(args):
         fail("nothing to release: 'Unreleased' is empty and no feat/fix commits since the last tag")
 
     start, end = sections(text)["Unreleased"]
-    tail = text[end:]
+    tail = text[end:].strip("\n")
     date = args.date or datetime.date.today().isoformat()
-    new_section = "\n\n## [{}] - {}\n\n{}\n\n".format(new, date, body)
-    write(CHANGELOG, text[:start] + new_section + tail.lstrip("\n"))
+    new_section = "\n\n## [{}] - {}\n\n{}\n".format(new, date, body)
+    # Exactly one blank line between sections and a single newline at the end (markdownlint MD012).
+    write(CHANGELOG, text[:start] + new_section + ("\n" + tail + "\n" if tail else ""))
 
     pubspec = VERSION_LINE.sub("version: {}+{}".format(new, build + 1), read(PUBSPEC), count=1)
     write(PUBSPEC, pubspec)

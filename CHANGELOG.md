@@ -6,6 +6,8 @@ Add a line under *Unreleased* in every PR. `tool/release.py prepare` moves it un
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 - Flutter app skeleton with a feature-first layout and a counter reference feature covering every layer.
