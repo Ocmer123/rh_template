@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rh_template/core/config/app_env.dart';
 import 'package:rh_template/core/theme/app_theme.dart';
 import 'package:rh_template/features/counter/ui/counter_screen.dart';

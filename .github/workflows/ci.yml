@@ -78,12 +78,21 @@ jobs:
         run: git ls-files -z '*.dart' | xargs -0 dart format --output=none --set-exit-if-changed
       - name: Analyze
         run: flutter analyze --fatal-infos
-      - name: Dependencies are resolvable and the lockfile is committed
+      # Fails when a direct dependency is missing from the committed lockfile.
+      # Other differences (transitive pins that follow the SDK version) only warn,
+      # because a local SDK older or newer than FLUTTER_VERSION resolves them differently.
+      - name: Lockfile is committed and matches pubspec.yaml
         run: |
-          git diff --exit-code pubspec.lock || {
-            echo "::error::pubspec.lock is out of date. Run 'flutter pub get' and commit it."
+          direct() { awk '/^  [a-z0-9_]+:$/ {name=$1} /dependency: "direct/ {print name}' "$1" | sort; }
+          git show HEAD:pubspec.lock > "$RUNNER_TEMP/committed.lock"
+          if ! diff <(direct "$RUNNER_TEMP/committed.lock") <(direct pubspec.lock); then
+            echo "::error::pubspec.lock does not match the dependencies in pubspec.yaml. Run 'flutter pub get' and commit pubspec.lock."
             exit 1
-          }
+          fi
+          if ! git diff --quiet pubspec.lock; then
+            echo "::warning::pubspec.lock resolves differently on Flutter $FLUTTER_VERSION (usually a local SDK version skew). Upgrade your local Flutter or commit the lockfile from CI."
+            git diff --stat pubspec.lock
+          fi
       - name: Test with coverage
         run: flutter test --coverage --reporter expanded
       - name: Enforce coverage (domain + data >= 80%)
@@ -125,7 +134,7 @@ jobs:
       - name: Relative links in markdown resolve
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
-          args: --offline --no-progress --include-fragments=false "**/*.md"
+          args: --offline --no-progress "**/*.md"
           fail: true
       - name: ShellCheck
         run: shellcheck --severity=warning .githooks/* tool/*.sh .claude/hooks/*.sh
@@ -195,7 +204,8 @@ jobs:
 
   security:
     name: Security
-    uses: ./.github/workflows/security.yml
+    # "$/" self-repository syntax is not supported by actionlint 1.7.12 yet; switch when it is.
+    uses: ./.github/workflows/security.yml # zizmor: ignore[self-repository]
     permissions:
       actions: read
       contents: read

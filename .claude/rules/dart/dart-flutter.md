@@ -8,6 +8,7 @@ paths:
 
 - Follow `analysis_options.yaml`. `flutter analyze --fatal-infos` must report nothing. Do not add `// ignore:` without a comment that explains why.
 - Use package imports only (`package:rh_template/...`) inside `lib/`.
+- Import Material from `package:material_ui/material_ui.dart`, not `package:flutter/material.dart`, which is deprecated since Flutter 3.47. CI runs a newer SDK than some local installs, so CI's analyzer is the authority.
 - Use `const` wherever possible. Prefer immutable classes with `final` fields and `copyWith`.
 - Extract a widget once a `build` method passes about 60 lines. Use private widget classes, not helper methods that return widgets.
 - Keep business logic out of widgets and `build` methods.
