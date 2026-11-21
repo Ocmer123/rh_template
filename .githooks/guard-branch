@@ -1,0 +1,10 @@
+#!/bin/sh
+# Shared by pre-commit and pre-push: dev and main only change through pull requests.
+branch=$(git symbolic-ref --short -q HEAD)
+case "$branch" in
+  main|dev)
+    echo "Blocked: never commit or push directly to '$branch'."
+    echo "Create a branch (git switch -c feat/my-change dev), push it and open a pull request."
+    exit 1;;
+esac
+exit 0

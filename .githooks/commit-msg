@@ -1,0 +1,12 @@
+#!/bin/sh
+# Commit subjects follow Conventional Commits: <type>(<scope>)!: <summary>
+subject=$(head -n 1 "$1")
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0;;
+esac
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style|security)(\([a-z0-9_-]+\))?!?: .{1,72}$'; then
+  echo "Blocked: commit subject must follow Conventional Commits, e.g. 'feat(auth): add login screen'."
+  echo "Got: $subject"
+  exit 1
+fi
+exit 0

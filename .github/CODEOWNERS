@@ -1,0 +1,7 @@
+# Default owner for everything. Pipelines and security config are listed
+# explicitly so a review is requested even if the default changes later.
+*                   @Ocmer123
+/.github/           @Ocmer123
+/.githooks/         @Ocmer123
+/.claude/           @Ocmer123
+/tool/              @Ocmer123

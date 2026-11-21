@@ -1,0 +1,13 @@
+{
+  "@@locale": "en",
+  "appTitle": "RH Template",
+  "@appTitle": { "description": "App name shown in the title bar and task switcher." },
+  "counterHeadline": "You pressed the button this many times:",
+  "@counterHeadline": { "description": "Label above the counter value." },
+  "incrementTooltip": "Increment",
+  "@incrementTooltip": { "description": "Tooltip and semantics label for the + button." },
+  "decrementTooltip": "Decrement",
+  "@decrementTooltip": { "description": "Tooltip and semantics label for the - button." },
+  "resetTooltip": "Reset",
+  "@resetTooltip": { "description": "Tooltip and semantics label for the reset button." }
+}

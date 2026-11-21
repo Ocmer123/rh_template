@@ -1,0 +1,27 @@
+* text=auto eol=lf
+
+# Windows scripts need CRLF, everything else is LF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.sh text eol=lf
+.githooks/* text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.jar binary
+*.jks binary
+*.keystore binary
+
+# Generated files: collapsed in PR diffs.
+pubspec.lock linguist-generated=true
+*.g.dart linguist-generated=true

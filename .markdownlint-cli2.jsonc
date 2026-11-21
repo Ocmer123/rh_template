@@ -1,0 +1,12 @@
+{
+  // Markdown lint for README, docs, CHANGELOG and the .claude/ guides.
+  "config": {
+    "default": true,
+    "MD013": false, // line length: prose wraps naturally
+    "MD024": { "siblings_only": true }, // CHANGELOG repeats "### Added" per version
+    "MD033": false, // inline HTML (comments in templates)
+    "MD041": false, // templates and agent files do not start with a heading
+    "MD060": false // table column alignment
+  },
+  "ignores": ["build/**", ".dart_tool/**", "**/node_modules/**", "android/**", "ios/**"]
+}

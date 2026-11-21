@@ -1,0 +1,21 @@
+#!/bin/sh
+# 1. No commits on dev/main.  2. No secrets.  3. Staged Dart files are formatted.
+hooks_dir=$(dirname "$0")
+"$hooks_dir/guard-branch" || exit 1
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner || {
+    echo "Blocked: gitleaks found a possible secret in the staged changes."
+    exit 1
+  }
+fi
+
+staged_dart=$(git diff --cached --name-only --diff-filter=ACM -- '*.dart')
+if [ -n "$staged_dart" ] && command -v dart >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # word splitting is intended: one argument per file
+  if ! dart format --output=none --set-exit-if-changed $staged_dart >/dev/null; then
+    echo "Blocked: staged Dart files are not formatted. Run: dart format ."
+    exit 1
+  fi
+fi
+exit 0

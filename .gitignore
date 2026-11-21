@@ -1,0 +1,58 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+doc/api/
+coverage/
+
+# Generated code (CI regenerates it)
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+lib/l10n/app_localizations*.dart
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Secrets and signing (never commit these, CI uses repository secrets)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.jks
+*.keystore
+android/key.properties
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/**/*.mobileprovision
+
+# Android / iOS build output
+android/.gradle/
+android/local.properties
+android/app/.cxx/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+
+# Python tooling
+__pycache__/
+*.pyc
+
+# Claude Code local-only files
+.claude/settings.local.json
+.claude/worktrees/

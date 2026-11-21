@@ -1,0 +1,218 @@
+name: CI
+
+# The quality gate. Runs on every pull request into dev or main, and is called
+# by the dev and release pipelines after a merge. The final "CI gate" job is
+# the single required status check in branch protection.
+on:
+  pull_request:
+    branches: [dev, main]
+  merge_group:
+  workflow_call:
+    inputs:
+      upload-apk:
+        description: Upload the debug APK as an artifact
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.50.0
+
+jobs:
+  branch-rules:
+    name: Branch rules and PR title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce feature -> dev -> main and Conventional Commit titles
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ "$BASE" = "main" ] && [ "$HEAD" != "dev" ] && ! echo "$HEAD" | grep -Eq '^hotfix/'; then
+            echo "::error::Only dev (or a hotfix/* branch) may be merged into main. This PR is from '$HEAD'."
+            exit 1
+          fi
+          if [ "$BASE" = "dev" ] && [ "$HEAD" = "main" ]; then
+            echo "::notice::Back-merge of main into dev (after a hotfix)."
+          fi
+          if ! echo "$HEAD" | grep -Eq '^(dev|main|(feat|feature|fix|hotfix|docs|chore|refactor|test|ci|perf|build|release)/[a-z0-9._/-]+|dependabot/.+)$'; then
+            echo "::error::Branch '$HEAD' must be named <type>/<slug>, e.g. feat/login-screen."
+            exit 1
+          fi
+          # Squash merges turn the PR title into the commit subject, which feeds the changelog.
+          if [ "$HEAD" != "dev" ] && ! echo "$TITLE" | grep -Eq '^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style|security)(\([a-z0-9_-]+\))?!?: .+'; then
+            echo "::error::PR title must follow Conventional Commits, e.g. 'feat(auth): add login screen'. Got: $TITLE"
+            exit 1
+          fi
+
+  quality:
+    name: Format, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+      - name: Generate code (only once build_runner is a dependency)
+        run: |
+          if grep -q '^  build_runner:' pubspec.yaml; then
+            dart run build_runner build --delete-conflicting-outputs
+          fi
+      - name: Check formatting (tracked files only, generated code is ignored)
+        run: git ls-files -z '*.dart' | xargs -0 dart format --output=none --set-exit-if-changed
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+      - name: Dependencies are resolvable and the lockfile is committed
+        run: |
+          git diff --exit-code pubspec.lock || {
+            echo "::error::pubspec.lock is out of date. Run 'flutter pub get' and commit it."
+            exit 1
+          }
+      - name: Test with coverage
+        run: flutter test --coverage --reporter expanded
+      - name: Enforce coverage (domain + data >= 80%)
+        run: bash tool/coverage_check.sh coverage/lcov.info 80
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+          retention-days: 14
+
+  repo-lint:
+    name: Repo lint (docs, markdown, shell, workflows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: JSON and ARB files are well formed
+        run: |
+          status=0
+          while IFS= read -r -d '' file; do
+            python -m json.tool "$file" > /dev/null || { echo "::error file=$file::invalid JSON"; status=1; }
+          done < <(git ls-files -z '*.json' '*.arb')
+          exit $status
+      - name: Docs index is up to date
+        run: python tool/docs_index.py --check
+      - name: Changelog and version are readable
+        run: python tool/release.py version
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25.0.0
+        with:
+          globs: "**/*.md"
+      - name: Relative links in markdown resolve
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --offline --no-progress --include-fragments=false "**/*.md"
+          fail: true
+      - name: ShellCheck
+        run: shellcheck --severity=warning .githooks/* tool/*.sh .claude/hooks/*.sh
+      - name: actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  release-readiness:
+    name: Release readiness
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Version has CHANGELOG notes and an unused tag
+        run: python3 tool/release.py check
+
+  android-build:
+    name: Android debug build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check for the android/ platform folder
+        id: platform
+        run: |
+          if [ -d android ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::android/ not found, skipping the build. Run tool/init_project.sh to create it."
+          fi
+      - if: steps.platform.outputs.present == 'true'
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - if: steps.platform.outputs.present == 'true'
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - if: steps.platform.outputs.present == 'true'
+        run: |
+          flutter pub get
+          if grep -q '^  build_runner:' pubspec.yaml; then
+            dart run build_runner build --delete-conflicting-outputs
+          fi
+          flutter build apk --debug --dart-define=APP_ENV=dev
+      - if: steps.platform.outputs.present == 'true' && inputs.upload-apk
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  gate:
+    name: CI gate
+    if: always()
+    needs: [branch-rules, quality, repo-lint, release-readiness, android-build, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Everything required passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          case "$RESULTS" in
+            *failure*|*cancelled*) exit 1;;
+          esac

@@ -1,0 +1,53 @@
+name: Prepare release
+
+# Manual. Branches off dev, bumps the version, moves "Unreleased" in
+# CHANGELOG.md under the new version and opens a PR into dev. After that PR
+# merges, open the release PR dev -> main.
+#
+# Optional secret RELEASE_BOT_TOKEN (fine-grained PAT with contents and
+# pull-requests write on this repo): PRs opened with the default token do not
+# trigger CI, so without it push an empty commit to the branch to start checks.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version, e.g. 0.2.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
+          persist-credentials: true # needed to push the release branch
+      - name: Bump version and changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 tool/release.py prepare "$VERSION"
+      - name: Open pull request into dev
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          branch="release/v$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add pubspec.yaml CHANGELOG.md
+          git commit -m "chore(release): prepare v$VERSION"
+          git push origin "$branch"
+          gh pr create --base dev --head "$branch" \
+            --title "chore(release): prepare v$VERSION" \
+            --body "Bumps the version and moves the changelog. Edit CHANGELOG.md so a human can read it, then merge and open the release PR dev -> main."

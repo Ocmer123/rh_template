@@ -1,0 +1,26 @@
+name: Dev pipeline
+
+# Runs after every merge into dev: the full CI gate again on the merged result,
+# plus a downloadable debug APK (once android/ exists) for testers.
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-pipeline
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    with:
+      upload-apk: true

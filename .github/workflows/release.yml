@@ -1,0 +1,120 @@
+name: Release pipeline
+
+# Runs when a release PR (dev -> main) or a hotfix is merged into main.
+# Re-runs CI on the merged commit, then tags the pubspec version, builds the
+# release artifacts and publishes a GitHub release with the CHANGELOG notes.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.50.0
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  release:
+    name: Tag and publish
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Production secrets (signing keys) live in this environment only. Add
+    # required reviewers to it in Settings > Environments for a manual go/no-go.
+    environment:
+      name: production
+      url: ${{ github.server_url }}/${{ github.repository }}/releases
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read version
+        id: version
+        run: |
+          version=$(python3 tool/release.py version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::tag v$version already exists, nothing to release. Bump the version for the next release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Release notes from CHANGELOG.md
+        if: steps.version.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 tool/release.py notes "$VERSION" > "$RUNNER_TEMP/notes.md"
+      - name: Check for the android/ platform folder
+        id: platform
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          if [ -d android ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.platform.outputs.present == 'true'
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      # No cache in the release job: a poisoned cache must never reach a release build.
+      - if: steps.platform.outputs.present == 'true'
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: false
+      - name: Signing (only when the keystore secrets are configured)
+        if: steps.platform.outputs.present == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::notice::No signing secrets, the release build is unsigned (debug-signed)."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/upload.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+      - name: Build release artifacts
+        if: steps.platform.outputs.present == 'true'
+        run: |
+          flutter pub get
+          if grep -q '^  build_runner:' pubspec.yaml; then
+            dart run build_runner build --delete-conflicting-outputs
+          fi
+          flutter build appbundle --release --dart-define=APP_ENV=prod
+          flutter build apk --release --dart-define=APP_ENV=prod
+      - name: Tag and create the GitHub release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          args=(--target "$GITHUB_SHA" --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md")
+          for file in build/app/outputs/bundle/release/app-release.aab build/app/outputs/flutter-apk/app-release.apk; do
+            [ -f "$file" ] && args+=("$file")
+          done
+          gh release create "v$VERSION" "${args[@]}"
+      - name: Clean up signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" android/key.properties
