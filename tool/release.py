@@ -28,7 +28,8 @@ PUBSPEC = ROOT / "pubspec.yaml"
 CHANGELOG = ROOT / "CHANGELOG.md"
 
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
-VERSION_LINE = re.compile(r"^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$", re.MULTILINE)
+# [ \t] instead of \s: \s also matches newlines and would eat the next blank line.
+VERSION_LINE = re.compile(r"^version:[ \t]*(\d+\.\d+\.\d+)\+(\d+)[ \t]*$", re.MULTILINE)
 SECTION = re.compile(r"^## \[([^\]]+)\].*$", re.MULTILINE)
 COMMIT = re.compile(r"^(\w+)(\([^)]*\))?(!)?: (.+)$")
 

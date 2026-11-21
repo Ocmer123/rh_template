@@ -6,6 +6,8 @@ Add a line under *Unreleased* in every PR. `tool/release.py prepare` moves it un
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-21
+
 ### Added
 
 - Flutter app skeleton with a feature-first layout and a counter reference feature covering every layer.
@@ -15,3 +17,4 @@ Add a line under *Unreleased* in every PR. `tool/release.py prepare` moves it un
 - Dev pipeline, release pipeline and a *Prepare release* workflow.
 - Git hooks, Claude Code rules, agents, commands, skills and hooks.
 - Docs: architecture, ADRs, plans and a generated index.
+
