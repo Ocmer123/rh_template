@@ -8,7 +8,7 @@ A Flutter app template with everything a new project needs from day one:
 
 - **Git flow with two environments:** work branches -> `dev` (dev environment) -> `main` (prod). Direct pushes are blocked by git hooks, Claude Code hooks and branch protection.
 - **CI gate on every PR:** formatting, `flutter analyze --fatal-infos`, tests with an 80 % coverage gate on domain and data, Markdown, link, shell and workflow linting, branch and PR-title rules, and an Android build.
-- **Security checks:** gitleaks, OSV-Scanner, dependency review (vulnerabilities and licences), CodeQL and zizmor for workflows, OpenSSF Scorecard, Dependabot with a cooldown, and every action pinned to a commit SHA.
+- **Security checks:** gitleaks, OSV-Scanner, dependency review, CodeQL and zizmor for workflows, OpenSSF Scorecard, Dependabot with a cooldown, and every action pinned to a commit SHA.
 - **Pipelines:** a dev pipeline (debug APK per merge into `dev`), a release pipeline (tag, `APP_ENV=prod` build and GitHub release per merge into `main`), and a one-click *Prepare release*.
 - **Claude Code setup:** rules, agents, commands, skills and safety hooks in [`.claude/`](.claude/), summarised in [CLAUDE.md](CLAUDE.md).
 - **Docs:** architecture, ADRs, plans, a changelog and a generated docs index in [docs/](docs/README.md).

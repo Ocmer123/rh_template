@@ -14,7 +14,7 @@
 | gitleaks secret scan | pre-commit hook (if installed) and CI |
 | GitHub secret scanning and push protection | GitHub |
 | OSV-Scanner on `pubspec.lock` | CI and a weekly run |
-| Dependency review (vulnerabilities and licences of new dependencies) | every PR |
+| Dependency review (vulnerabilities in new or changed dependencies; licences are reviewed by hand) | every PR |
 | CodeQL for workflows, and zizmor (workflow security) | CI |
 | OpenSSF Scorecard | weekly run and on `dev` |
 | Dependabot (pub and actions, 7-day cooldown) | weekly |
