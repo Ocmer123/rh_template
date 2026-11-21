@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Design tokens. Widgets read colours, spacing, radii and durations from here,
 /// never from literals, so the look can change in one place.

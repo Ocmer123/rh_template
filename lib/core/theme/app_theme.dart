@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rh_template/core/theme/tokens.dart';
 
 /// Material 3 themes built from [Tokens].

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rh_template/features/counter/application/counter_providers.dart';
 import 'package:rh_template/features/counter/data/in_memory_counter_repository.dart';
 import 'package:rh_template/features/counter/domain/counter.dart';

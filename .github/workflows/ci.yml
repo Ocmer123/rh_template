@@ -125,7 +125,7 @@ jobs:
       - name: Relative links in markdown resolve
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
-          args: --offline --no-progress --include-fragments=false "**/*.md"
+          args: --offline --no-progress "**/*.md"
           fail: true
       - name: ShellCheck
         run: shellcheck --severity=warning .githooks/* tool/*.sh .claude/hooks/*.sh
@@ -195,7 +195,8 @@ jobs:
 
   security:
     name: Security
-    uses: ./.github/workflows/security.yml
+    # "$/" self-repository syntax is not supported by actionlint 1.7.12 yet; switch when it is.
+    uses: ./.github/workflows/security.yml # zizmor: ignore[self-repository]
     permissions:
       actions: read
       contents: read

@@ -16,7 +16,7 @@ If code and docs disagree, ask. Do not silently pick one. Put open questions in 
 
 ## Stack
 
-Flutter stable (CI pins `FLUTTER_VERSION` in `.github/workflows/`), Dart 3.9+, Material 3, `flutter_riverpod` (no codegen), `flutter_localizations` + ARB files. Add packages only with a reason (see `.claude/rules/common/security.md`).
+Flutter stable (CI pins `FLUTTER_VERSION` in `.github/workflows/`), Dart 3.9+, Material 3 via `material_ui` (Material moved out of `package:flutter` in Flutter 3.47+), `flutter_riverpod` (no codegen), `flutter_localizations` + ARB files. Add packages only with a reason (see `.claude/rules/common/security.md`).
 
 ## Layout (feature-first, layered)
 
